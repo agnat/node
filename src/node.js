@@ -509,11 +509,25 @@
     '\n});'
   ];
 
+  NativeModule.moduleOrigin = (function() {
+    var prologueLines    = NativeModule.wrapper[0].split('\n')
+      , lineCount        = prologueLines.length
+      , lastLineColumns  = prologueLines[lineCount - 1].length
+      ;
+    return function moduleOrigin(filename) {
+      return { filename: filename
+             , lineOffset: - (lineCount - 1)
+             , columnOffset: - lastLineColumns
+             };
+    };
+  })();
+
   NativeModule.prototype.compile = function() {
-    var source = NativeModule.getSource(this.id);
+    var source = NativeModule.getSource(this.id)
+      , origin = NativeModule.moduleOrigin(this.filename);
     source = NativeModule.wrap(source);
 
-    var fn = runInThisContext(source, this.filename, true);
+    var fn = runInThisContext(source, origin, true);
     fn(this.exports, NativeModule.require, this, this.filename);
 
     this.loaded = true;

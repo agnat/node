@@ -302,6 +302,27 @@ Handle<Value> WrappedScript::CompileRunInNewContext(const Arguments& args) {
     WrappedScript::EvalMachine<compileCode, newContext, returnResult>(args);
 }
 
+struct EvalOrigin {
+  EvalOrigin(Handle<Value> v) :
+    filename(String::New("evalmachine.<anonymous>")),
+    lineOffset(Integer::New(0)),
+    columnOffset(Integer::New(0))
+  {
+    Local<String> filename_sym = String::NewSymbol("filename");
+    if (v->IsObject() && v->ToObject()->Has(filename_sym)) {
+      Local<Object> origin = v->ToObject();
+      filename = origin->Get(filename_sym)->ToString();
+      lineOffset = origin->Get(String::NewSymbol("lineOffset"))->ToInteger();
+      columnOffset = origin->Get(String::NewSymbol("columnOffset"))->ToInteger();
+    } else if (! (v->IsUndefined() || v->IsNull())) {
+      filename = v->ToString();
+    }
+  }
+
+  Local<String> filename;
+  Local<Integer> lineOffset;
+  Local<Integer> columnOffset;
+};
 
 template <WrappedScript::EvalInputFlags input_flag,
           WrappedScript::EvalContextFlags context_flag,
@@ -336,9 +357,9 @@ Handle<Value> WrappedScript::EvalMachine(const Arguments& args) {
 
   const int filename_index = sandbox_index +
                              (context_flag == thisContext? 0 : 1);
-  Local<String> filename = args.Length() > filename_index
-                           ? args[filename_index]->ToString()
-                           : String::New("evalmachine.<anonymous>");
+  EvalOrigin eval_origin(args.Length() > filename_index
+                       ? args[filename_index]
+                       : Local<Value>::New(v8::Undefined()));
 
   const int display_error_index = args.Length() - 1;
   bool display_error = false;
@@ -378,10 +399,12 @@ Handle<Value> WrappedScript::EvalMachine(const Arguments& args) {
   Handle<Script> script;
 
   if (input_flag == compileCode) {
+    v8::ScriptOrigin origin(eval_origin.filename, eval_origin.lineOffset,
+        eval_origin.columnOffset);
     // well, here WrappedScript::New would suffice in all cases, but maybe
     // Compile has a little better performance where possible
-    script = output_flag == returnResult ? Script::Compile(code, filename)
-                                         : Script::New(code, filename);
+    script = output_flag == returnResult ? Script::Compile(code, &origin)
+                                         : Script::New(code, &origin);
     if (script.IsEmpty()) {
       // FIXME UGLY HACK TO DISPLAY SYNTAX ERRORS.
       if (display_error) DisplayExceptionLine(try_catch);
