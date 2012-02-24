@@ -61,3 +61,16 @@ uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr) {
   *ptr = (void*) proc;
   return uv_ok_;
 }
+
+char * uv_dlerror(uv_err_t err) {
+  enum { max_size = 1024 };
+  static char * message[max_size];
+  if (!FormatMessage(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, err.sys_errno_, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        message, max_size, NULL))
+  {
+    return NULL; // what now?
+  }
+  return message;
+}

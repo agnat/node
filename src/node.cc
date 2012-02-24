@@ -1583,7 +1583,7 @@ Handle<Value> DLOpen(const v8::Arguments& args) {
   if (err.code != UV_OK) {
     char * dlerror = uv_dlerror(err);
     Local<String> msg = String::Concat( String::Concat( String::Concat(
-        String::New("Unable to load shared library "), args[0]->ToString()),
+        String::New("failed to load shared library "), args[0]->ToString()),
         String::New(": ")), String::New(dlerror));
     Local<Value> exception = Exception::Error(msg);
     return ThrowException(exception);
@@ -1635,8 +1635,17 @@ Handle<Value> DLOpen(const v8::Arguments& args) {
 
     err = uv_dlsym(lib, "init", reinterpret_cast<void**>(&mod->register_func));
     if (err.code != UV_OK) {
-      uv_dlclose(lib);
 
+      char * dlerror = uv_dlerror(err);
+      uv_dlclose(lib);
+      Local<String> msg = String::Concat( String::Concat( String::Concat(
+          String::New("failed to load shared library "), args[0]->ToString()),
+          String::New(": ")), String::New(dlerror));
+      Local<Value> exception = Exception::Error(msg);
+      return ThrowException(exception);
+
+      uv_dlclose(lib);
+      /*
       const char* message;
       if (err.code == UV_ENOENT)
         message = "Module entry point not found.";
@@ -1644,6 +1653,7 @@ Handle<Value> DLOpen(const v8::Arguments& args) {
         message = uv_strerror(err);
 
       return ThrowException(Exception::Error(String::New(message)));
+      */
     }
     /* End Compatibility hack */
   }
