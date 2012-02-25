@@ -510,21 +510,21 @@
   ];
 
   NativeModule.moduleOrigin = (function() {
-    var prologueLines    = NativeModule.wrapper[0].split('\n')
-      , lineCount        = prologueLines.length
-      , lastLineColumns  = prologueLines[lineCount - 1].length
-      ;
+    var prologueLines = NativeModule.wrapper[0].split('\n'),
+        lineOffset = 1 - prologueLines.length,
+        columnOffset = - prologueLines[prologueLines.length - 1].length;
     return function moduleOrigin(filename) {
-      return { filename: filename
-             , lineOffset: - (lineCount - 1)
-             , columnOffset: - lastLineColumns
-             };
+      return {
+        filename: filename,
+        lineOffset: lineOffset,
+        columnOffset: columnOffset
+      };
     };
   })();
 
   NativeModule.prototype.compile = function() {
-    var source = NativeModule.getSource(this.id)
-      , origin = NativeModule.moduleOrigin(this.filename);
+    var source = NativeModule.getSource(this.id),
+        origin = NativeModule.moduleOrigin(this.filename);
     source = NativeModule.wrap(source);
 
     var fn = runInThisContext(source, origin, true);
